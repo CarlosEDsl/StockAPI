@@ -1,4 +1,6 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import "reflect-metadata";
+import { AppDataSource } from "./config/database";
 
 import { UserRepository } from './repositories/UserRepository';
 import { ProductRepository } from './repositories/ProductRepository';
@@ -72,10 +74,19 @@ app.use((err: ServerError, req: Request, res: Response, next: NextFunction) => {
 });
 
 const PORT: number = 8080;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-});
 
+AppDataSource.initialize()
+    .then(() => {
+        console.log("📦 Conexão com banco de dados estabelecida");
+        
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor rodando na porta ${PORT}`);
+        });
+    })
+    .catch((error) => {
+        console.error("Erro ao conectar ao banco de dados:", error);
+        process.exit(1);
+    });
 
 process.on('unhandledRejection', (reason: Error) => {
     console.error('🔥 Erro não tratado:', reason.message);
