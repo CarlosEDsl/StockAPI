@@ -1,6 +1,6 @@
-import { Repository } from 'typeorm';
+import mysql from 'mysql2/promise';
+import { dbConfig } from '../config/database';
 import { Product } from '../models/Product';
-import { AppDataSource } from '../config/database';
 
 export interface IProductRepository {
     create(product: Product): Promise<Product>;
@@ -13,35 +13,89 @@ export interface IProductRepository {
 }
 
 export class ProductRepository implements IProductRepository {
-    private repository: Repository<Product>;
+    private pool: mysql.Pool;
 
     constructor() {
-        this.repository = AppDataSource.getRepository(Product);
+        this.pool = mysql.createPool(dbConfig);
     }
 
     async create(product: Product): Promise<Product> {
-        return this.repository.save(product);
+        const [result] = await this.pool.execute(
+            'INSERT INTO products (id, name, description, price, quantity, userId, image) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                product.id,
+                product.name,
+                product.description,
+                product.price,
+                product.quantity,
+                product.userId,
+                product.image ? Buffer.from(await product.image.arrayBuffer()).toString('base64') : null
+            ]
+        );
+        return product;
     }
+    
 
     async findById(id: string): Promise<Product | null> {
-        return this.repository.findOneBy({ id });
+        const [rows] = await this.pool.execute(
+            'SELECT * FROM products WHERE id = ?',
+            [id]
+        );
+        const row = (rows as any[])[0];
+        return row ? new Product(row.id, row.name, row.description, row.price, row.quantity, row.userId) : null;
     }
 
     async findByUserId(userId: string): Promise<Product[]> {
-        return this.repository.findBy({ userId });
+        const [rows] = await this.pool.execute(
+            'SELECT * FROM products WHERE userId = ?',
+            [userId]
+        );
+        return (rows as any[]).map(row => new Product(row.name, row.description, row.image, row.price, row.quantity, row.userId, row.id));
     }
 
     async update(id: string, productData: Partial<Product>): Promise<Product | null> {
-        await this.repository.update({ id }, productData);
+        const fields = [];
+        const values = [];
+
+        if ('name' in productData) {
+            fields.push('name = ?');
+            values.push(productData.name);
+        }
+        if ('description' in productData) {
+            fields.push('description = ?');
+            values.push(productData.description);
+        }
+        if ('price' in productData) {
+            fields.push('price = ?');
+            values.push(productData.price);
+        }
+        if ('quantity' in productData) {
+            fields.push('quantity = ?');
+            values.push(productData.quantity);
+        }
+        if ('userId' in productData) {
+            fields.push('userId = ?');
+            values.push(productData.userId);
+        }
+
+        if (fields.length === 0) return null;
+
+        values.push(id);
+        await this.pool.execute(
+            `UPDATE products SET ${fields.join(', ')} WHERE id = ?`,
+            values
+        );
+
         return this.findById(id);
     }
 
     async delete(id: string): Promise<void> {
-        await this.repository.delete({ id });
+        await this.pool.execute('DELETE FROM products WHERE id = ?', [id]);
     }
 
     async list(): Promise<Product[]> {
-        return this.repository.find();
+        const [rows] = await this.pool.execute('SELECT * FROM products');
+        return (rows as any[]).map(row => new Product(row.name, row.description, row.image, row.price, row.quantity, row.userId));
     }
 
     async updateStock(id: string, quantity: number): Promise<Product | null> {
@@ -53,9 +107,9 @@ export class ProductRepository implements IProductRepository {
             throw new Error('Quantidade em estoque não pode ser negativa');
         }
 
-        await this.repository.update(
-            { id },
-            { quantity: newQuantity }
+        await this.pool.execute(
+            'UPDATE products SET quantity = ? WHERE id = ?',
+            [newQuantity, id]
         );
 
         return this.findById(id);

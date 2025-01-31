@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+require("reflect-metadata");
+const database_1 = require("./config/database");
 const UserRepository_1 = require("./repositories/UserRepository");
 const ProductRepository_1 = require("./repositories/ProductRepository");
 const UserService_1 = require("./services/UserService");
@@ -42,8 +44,17 @@ app.use((err, req, res, next) => {
     res.status(statusCode).json(errorResponse);
 });
 const PORT = 8080;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+database_1.connection.connect((err) => {
+    if (err) {
+        console.error("Erro ao conectar ao banco de dados:", err);
+        process.exit(1);
+    }
+    else {
+        console.log("📦 Conectado ao MySQL com sucesso!");
+        app.listen(PORT, () => {
+            console.log(`🚀 Servidor rodando na porta ${PORT}`);
+        });
+    }
 });
 process.on('unhandledRejection', (reason) => {
     console.error('🔥 Erro não tratado:', reason.message);

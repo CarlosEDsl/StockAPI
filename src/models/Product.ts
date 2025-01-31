@@ -17,9 +17,13 @@ export class Product {
         image: Blob,
         price: number,
         quantity: number,
-        userId: string
+        userId: string,
+        id?: string
     ) {
-        this._id = crypto.randomUUID();
+        if(!id)
+            this._id = crypto.randomUUID();
+        else
+            this._id = id;
         this._name = name;
         this._description = description;
         this._image = image;

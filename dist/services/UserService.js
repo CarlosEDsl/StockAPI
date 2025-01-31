@@ -33,6 +33,7 @@ class UserService {
     }
     authenticate(email, password) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log(email);
             const user = yield this.userRepository.findByEmail(email);
             if (!user) {
                 throw new Error('Email ou senha inválidos');

@@ -15,4 +15,3 @@ CREATE TABLE products (
     FOREIGN KEY (_userId) REFERENCES users(_id) ON DELETE CASCADE
 ); 
 
-INSERT INTO users (_id, _email, _password) VALUES ('1', 'teste@gmail.com', '123123123');
